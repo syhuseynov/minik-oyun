@@ -111,10 +111,16 @@ header{height:64px;flex:none;display:flex;align-items:center;gap:10px;padding:8p
 .pz{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;gap:10px;padding:6px 10px 12px}
 @media (orientation:landscape) and (min-width:640px){.pz{flex-direction:row}}
 .board{position:relative;display:grid;border-radius:14px;background:#fff;box-shadow:0 6px 0 #e7c6e0;flex:none}
-.board .ghost{position:absolute;inset:0;border-radius:14px;background-size:100% 100%;opacity:.22}
+.board .ghost{position:absolute;inset:0;border-radius:14px;background-size:100% 100%;opacity:.25}
 .slot{border:2px dashed rgba(180,120,200,.5);position:relative}
 .piece{background-repeat:no-repeat;border-radius:8px;box-shadow:0 3px 6px rgba(0,0,0,.25);touch-action:none}
-.tray2{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:center;max-width:520px}
+.tray2{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-content:flex-start;max-width:560px;min-height:0;overflow-y:auto;padding:4px}
+.stage.paint{touch-action:none;cursor:crosshair;overflow:hidden}
+.stage.paint>svg{overflow:hidden}
+.lvl{width:64px;height:64px;border-radius:18px;background:#fff;box-shadow:0 4px 0 #e7c6e0;font-size:24px;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.lvl small{font-size:11px;font-weight:700}
+.lvl.on{background:#ff7eb6;color:#fff;box-shadow:0 4px 0 #d6337a}
+.hint{position:absolute;left:50%;top:6px;transform:translateX(-50%);background:#fff;border-radius:20px;padding:4px 14px;font-weight:700;font-size:17px;box-shadow:0 3px 0 #e7c6e0;pointer-events:none;white-space:nowrap}
 .drag{position:fixed;z-index:50;pointer-events:none;transform:scale(1.05);box-shadow:0 10px 20px rgba(0,0,0,.3)}
 </style>
 </head>
@@ -187,9 +193,11 @@ const COLORS=['#FF7EB6','#B28DFF','#6EC6FF','#7EE0A8','#FFD166','#FF6B6B','#FFFF
 const PATS=['duz','nokta','yildiz','kalp','cizgi'];
 const SHOES=['babet','bot','spor','prenses'];
 const ACCS=[['kolye','📿'],['canta','👜'],['gozluk','👓'],['asa','🪄']];
+const BR={ruj:{w:9,o:.9},far:{w:16,o:.45},allik:{w:26,o:.3},kalem:{w:4,o:1},simli:{w:10,o:1,dash:'0.1 11'}};
+let BC={ruj:'#FF5C8A',far:'#7EC8FF',allik:'#FF7FA8',kalem:'#2b1d1d',simli:'#FFD34D',stamp:'❤️'};
 const NUM=['sıfır','bir','iki','üç','dört','beş','altı','yedi','sekiz','dokuz','on'];
 const PRAISE=['Harika oldu!','Çok güzel!','Muhteşem!','Bayıldım!','Süpersin!'];
-function defDoll(){return{skin:SKIN[0],eye:EYE[0],lip:null,shadow:null,blush:null,stick:null,hair:'uzun',hairColor:HAIRC[0],hairAcc:null,dress:'prenses',dressColor:'#FF7EB6',pattern:'duz',shoes:'babet',shoeColor:'#FF7EB6',acc:[]}}
+function defDoll(){return{skin:SKIN[0],eye:EYE[0],lip:null,shadow:null,blush:null,stick:null,hair:'uzun',hairColor:HAIRC[0],hairAcc:null,dress:'prenses',dressColor:'#FF7EB6',pattern:'duz',shoes:'babet',shoeColor:'#FF7EB6',acc:[],paint:[]}}
 
 /* ---------- storage ---------- */
 let S={doll:defDoll(),stars:0,sound:true};
@@ -308,29 +316,50 @@ function dollInner(s,u){
  if(s.lip)o+=`<path d="M132 190 Q141 184 150 189 Q159 184 168 190 Q160 206 150 206 Q140 206 132 190 Z" fill="${s.lip}"/><path d="M135 192 Q150 198 165 192" stroke="${shade(s.lip,-.3)}" stroke-width="2" fill="none"/><ellipse cx="144" cy="199" rx="4" ry="2" fill="#fff" opacity=".5"/>`;
  else o+=`<path d="M134 190 Q150 204 166 190" stroke="#c9576b" stroke-width="4" fill="none" stroke-linecap="round"/>`;
  if(s.stick)o+=`<text x="208" y="176" font-size="22" text-anchor="middle" dominant-baseline="central">${s.stick}</text>`;
+ o+=`<clipPath id="fc${u}"><ellipse cx="150" cy="148" rx="80" ry="82"/><circle cx="70" cy="156" r="14"/><circle cx="230" cy="156" r="14"/></clipPath><g clip-path="url(#fc${u})" id="pg${u}">${(s.paint||[]).map(paintEl).join('')}</g>`;
  o+=hairFront(s)+hairAcc(s);
  if(acc.includes('gozluk'))o+=`<circle cx="120" cy="152" r="21" fill="rgba(255,255,255,.18)" stroke="#ff4f9a" stroke-width="4"/><circle cx="180" cy="152" r="21" fill="rgba(255,255,255,.18)" stroke="#ff4f9a" stroke-width="4"/><path d="M141 150 Q150 143 159 150" stroke="#ff4f9a" stroke-width="4" fill="none"/>`;
  if(acc.includes('asa'))o+=`<path d="M91 372 L58 296" stroke="#b28dff" stroke-width="6" stroke-linecap="round"/><path d="${starPath(56,288,17,7)}" fill="#FFD34D" stroke="#e0a800" stroke-width="2"/><circle cx="36" cy="272" r="3" fill="#FFD34D"/><circle cx="78" cy="268" r="2.5" fill="#ff8fc8"/><circle cx="91" cy="370" r="13" fill="${sk}"/>`;
  if(acc.includes('canta'))o+=`<path d="M199 354 Q210 328 222 354" stroke="#c2185b" stroke-width="3" fill="none"/><rect x="194" y="352" width="34" height="28" rx="7" fill="#ff6fae" stroke="#c2185b" stroke-width="2"/><circle cx="211" cy="362" r="3.5" fill="#FFD34D"/>`;
  return o}
+function strokeAttrs(k,c){const b=BR[k];return`fill="none" stroke="${c}" stroke-width="${b.w}" stroke-opacity="${b.o}" stroke-linecap="round" stroke-linejoin="round"${b.dash?` stroke-dasharray="${b.dash}"`:''}`}
+function ptsD(a){let d='M'+a[0]+' '+a[1];for(let i=2;i<a.length;i+=2)d+=' L'+a[i]+' '+a[i+1];if(a.length===2)d+=' L'+a[0]+' '+a[1];return d}
+function paintEl(p){if(p.t==='t')return`<text x="${p.x}" y="${p.y}" font-size="20" text-anchor="middle" dominant-baseline="central">${p.e}</text>`;return`<path d="${ptsD(p.pts)}" ${strokeAttrs(p.k,p.c)}/>`}
 function dollSVG(s,vb='0 0 300 520'){return`<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${dollInner(s,++UID)}</svg>`}
 
 /* =========================================================
    DOLL GAMES (makeup / hair / dress)
    ========================================================= */
 const TABS={
- makeup:[{k:'lip',ic:'💋',l:'Ruj',t:'color',v:LIP},{k:'shadow',ic:'🎨',l:'Far',t:'color',v:SHADOW},{k:'blush',ic:'🌷',l:'Allık',t:'color',v:BLUSH},{k:'stick',ic:'✨',l:'Süs',t:'emoji',v:STICK},{k:'eye',ic:'👀',l:'Göz',t:'color',v:EYE},{k:'skin',ic:'🖐️',l:'Ten',t:'color',v:SKIN}],
+ makeup:[{k:'ruj',ic:'💄',l:'Ruj',t:'brush',v:['#FF5C8A','#E8283C','#FF8566','#B4479C','#FF9EC4','#C2185B']},{k:'far',ic:'🎨',l:'Far',t:'brush',v:['#7EC8FF','#B98CFF','#7EDC9C','#FFD45C','#FF9EDB','#8a5a2b']},{k:'allik',ic:'🌷',l:'Allık',t:'brush',v:['#FF7FA8','#FF9F80','#E58CFF','#ff5c5c']},{k:'kalem',ic:'✏️',l:'Kalem',t:'brush',v:['#2b1d1d','#5a3b2e','#3d7bd9','#7a4fc8','#ff4f9a','#3aa35c']},{k:'simli',ic:'✨',l:'Simli',t:'brush',v:['#FFD34D','#ffffff','#ff8fc8','#7ec8ff','#b98cff']},{k:'stamp',ic:'⭐',l:'Süs',t:'stamp',v:['❤️','⭐','🦋','🌸','🌈','💎','🍓','☀️']},{k:'eye',ic:'👀',l:'Göz',t:'color',v:EYE},{k:'skin',ic:'🖐️',l:'Ten',t:'color',v:SKIN}],
  hair:[{k:'hair',ic:'💇‍♀️',l:'Model',t:'thumb',v:HAIRS,vb:'20 0 260 360'},{k:'hairColor',ic:'🎨',l:'Renk',t:'color',v:HAIRC},{k:'hairAcc',ic:'🎀',l:'Toka',t:'thumb',v:HACC,vb:'40 0 220 200'}],
  dress:[{k:'dress',ic:'👗',l:'Kıyafet',t:'thumb',v:DRESSES,vb:'30 215 240 290'},{k:'dressColor',ic:'🎨',l:'Renk',t:'color',v:COLORS},{k:'pattern',ic:'🔷',l:'Desen',t:'thumb',v:PATS,vb:'95 240 110 110'},{k:'shoes',ic:'👟',l:'Ayakkabı',t:'thumb',v:SHOES,vb:'105 445 90 55'},{k:'shoeColor',ic:'🖍️',l:'Ayk. Renk',t:'color',v:COLORS},{k:'acc',ic:'👜',l:'Takı',t:'toggle',v:ACCS}]
 };
-const INTRO={makeup:'Hadi bebeğimize makyaj yapalım!',hair:'Kuaföre hoş geldin! Saçını yapalım.',dress:'Bugün ne giyelim?'};
+const INTRO={makeup:'Bir renk seç ve parmağınla yüzüne sür!',hair:'Kuaföre hoş geldin! Saçını yapalım.',dress:'Bugün ne giyelim?'};
 let DM='makeup',DT=0;
 function openDoll(mode){DM=mode;DT=0;renderDoll();renderTabs();renderOpts();renderActs();say(INTRO[mode])}
-function renderDoll(){$('#dollStage').innerHTML=dollSVG(S.doll)}
-function renderTabs(){const t=$('#dollTabs');t.innerHTML='';TABS[DM].forEach((tb,i)=>t.append(h('button',{cls:'tab'+(i===DT?' on':''),on:()=>{DT=i;pop();renderTabs();renderOpts()}},tb.ic,h('small',{},tb.l))))}
+function renderDoll(){const ds=$('#dollStage'),u=++UID,mk=DM==='makeup';ds.dataset.u=u;ds.classList.toggle('paint',mk);
+ ds.innerHTML=`<svg viewBox="${mk?'48 30 204 230':'0 0 300 520'}" xmlns="http://www.w3.org/2000/svg">${dollInner(S.doll,u)}</svg>`+(mk?`<div class="hint">${hintText()}</div>`:'')}
+function hintText(){const tb=TABS.makeup[DT];return tb.t==='brush'?'👆 Parmağınla sür':tb.t==='stamp'?'👆 Yüze dokun, süs koy':'👇 Renk seç'}
+(function(){const ds=$('#dollStage');let cur=null;
+ const inFace=p=>((p.x-150)/80)**2+((p.y-148)/82)**2<=1;
+ ds.addEventListener('pointerdown',ev=>{if(DM!=='makeup')return;const tb=TABS.makeup[DT];if(tb.t!=='brush'&&tb.t!=='stamp')return;
+  const svg=ds.querySelector('svg');if(!svg)return;ev.preventDefault();const p=svgPoint(svg,ev);
+  if(tb.t==='stamp'){if(!inFace(p)){oops();return}S.doll.paint.push({t:'t',e:BC.stamp,x:Math.round(p.x),y:Math.round(p.y)});save();pop();renderDoll();return}
+  const st={t:'s',k:tb.k,c:BC[tb.k],pts:[Math.round(p.x),Math.round(p.y)]};
+  const g=svg.querySelector('#pg'+ds.dataset.u);const el=document.createElementNS('http://www.w3.org/2000/svg','path');
+  strokeAttrs(st.k,st.c).replace(/([\w-]+)="([^"]*)"/g,(m,a,v)=>el.setAttribute(a,v));el.setAttribute('d',ptsD(st.pts));g.append(el);
+  cur={st,el,svg};try{ds.setPointerCapture(ev.pointerId)}catch(e){}tone(520,.05,'sine',.06)});
+ ds.addEventListener('pointermove',ev=>{if(!cur)return;const p=svgPoint(cur.svg,ev),a=cur.st.pts,lx=a[a.length-2],ly=a[a.length-1];
+  if(Math.hypot(p.x-lx,p.y-ly)<2)return;a.push(Math.round(p.x),Math.round(p.y));cur.el.setAttribute('d',ptsD(a))});
+ const end=()=>{if(!cur)return;S.doll.paint.push(cur.st);if(S.doll.paint.length>300)S.doll.paint.shift();cur=null;save()};
+ ds.addEventListener('pointerup',end);ds.addEventListener('pointercancel',end);})();
+function renderTabs(){const t=$('#dollTabs');t.innerHTML='';TABS[DM].forEach((tb,i)=>t.append(h('button',{cls:'tab'+(i===DT?' on':''),on:()=>{DT=i;pop();renderTabs();renderOpts();if(DM==='makeup'){const hn=document.querySelector('#dollStage .hint');if(hn)hn.textContent=hintText()}}},tb.ic,h('small',{},tb.l))))}
 function renderOpts(){const box=$('#dollOpts');box.innerHTML='';const tb=TABS[DM][DT];const d=S.doll;
  tb.v.forEach(val=>{let b;
   if(tb.t==='toggle'){const[key,em]=val;const on=d.acc.includes(key);b=h('button',{cls:'opt sq'+(on?' on':''),on:()=>{d.acc=on?d.acc.filter(x=>x!==key):[...d.acc,key];changed()}},em)}
+  else if(tb.t==='brush'||tb.t==='stamp'){const key=tb.t==='stamp'?'stamp':tb.k,on=BC[key]===val;b=h('button',{cls:'opt'+(on?' on':''),on:()=>{BC[key]=val;pop();renderOpts()}});
+   if(tb.t==='stamp')b.textContent=val;else{b.style.background=val;b.style.boxShadow=(on?'0 0 0 3px #ffd1e6,':'')+'inset 0 -6px 0 rgba(0,0,0,.12)';if(on)b.textContent=tb.ic}}
   else{const on=d[tb.k]===val;b=h('button',{cls:'opt'+(tb.t==='thumb'?' sq':'')+(on?' on':''),on:()=>{d[tb.k]=val;changed()}});
    if(val===null)b.textContent='🚫';
    else if(tb.t==='color'){b.style.background=val;b.style.boxShadow=(on?'0 0 0 3px #ffd1e6,':'')+'inset 0 -6px 0 rgba(0,0,0,.12)'}
@@ -345,8 +374,9 @@ function randomize(){const d=S.doll;
  if(DM==='dress'){d.dress=rnd(DRESSES);d.dressColor=rnd(COLORS);d.pattern=rnd(PATS);d.shoes=rnd(SHOES);d.shoeColor=rnd(COLORS);d.acc=ACCS.map(a=>a[0]).filter(()=>Math.random()<.4)}
  changed();sparkle($('#dollStage'),6)}
 function renderActs(){const a=$('#dollActs');a.innerHTML='';
- a.append(h('button',{cls:'act',on:randomize},'🎲 Karıştır'));
- if(DM==='makeup')a.append(h('button',{cls:'act',on:()=>{Object.assign(S.doll,{lip:null,shadow:null,blush:null,stick:null});changed();say('Yüzünü yıkadık, tertemiz!')}},'🧽 Sil'));
+ if(DM==='makeup'){a.append(h('button',{cls:'act',on:()=>{if(S.doll.paint.length){S.doll.paint.pop();save();pop();renderDoll()}else oops()}},'↩️ Geri'));
+  a.append(h('button',{cls:'act',on:()=>{Object.assign(S.doll,{lip:null,shadow:null,blush:null,stick:null,paint:[]});changed();say('Yüzünü yıkadık, tertemiz!')}},'🧽 Sil'))}
+ else a.append(h('button',{cls:'act',on:randomize},'🎲 Karıştır'));
  a.append(h('button',{cls:'act go',on:()=>{sparkle($('#dollStage'),8);win()}},'✅ Bitti'))}
 
 /* =========================================================
@@ -473,18 +503,30 @@ const SCENES={
 const SCN=[['gokkusagi','Gökkuşağı'],['ev','Evim'],['deniz','Deniz'],['bebek','Bebeğim']];
 const url=svg=>'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
 let PZ={};
-function puzzleMenu(){const pz=$('#pz');pz.innerHTML='';PZ.n=PZ.n||2;
- const lvl=h('div',{cls:'row'},[[2,'Kolay (4)'],[3,'Orta (9)']].map(([n,l])=>h('button',{cls:'act'+(PZ.n===n?' pink':''),style:'flex:none;padding:0 18px',on:()=>{PZ.n=n;pop();puzzleMenu()}},l)));
- pz.append(h('div',{cls:'menu',style:'flex:none'},h('h2',{},'Bir resim seç!'),lvl,h('div',{cls:'cards'},SCN.map(([k,l])=>h('button',{cls:'card',on:()=>{pop();puzzleStart(k)}},h('img',{src:url(SCENES[k]()),alt:l}),l)))));
- say('Bir resim seç!')}
-function puzzleStart(k){const pz=$('#pz');pz.innerHTML='';const n=PZ.n,img=url(SCENES[k]());
- const W=Math.floor(Math.min(innerWidth*.86,(innerHeight-64)*.5,440,innerWidth>innerHeight&&innerWidth>=640?(innerHeight-90):9999)/n)*n,s=W/n,ts=Math.round(s*.72);
+let CUSTOM=null;try{CUSTOM=localStorage.getItem('minik-foto')}catch(e){}
+function puzzleMenu(){const pz=$('#pz');pz.innerHTML='';PZ.n=PZ.n||2;if(PZ.hint===undefined)PZ.hint=true;
+ const lvl=h('div',{cls:'row'},[2,3,4,5,6].map(n=>h('button',{cls:'lvl'+(PZ.n===n?' on':''),on:()=>{PZ.n=n;pop();say((n*n)+' parça');puzzleMenu()}},String(n*n),h('small',{},'parça'))),
+  h('button',{cls:'lvl'+(PZ.hint?' on':''),on:()=>{PZ.hint=!PZ.hint;pop();say(PZ.hint?'Resim görünecek':'Resim gizli, daha zor!');puzzleMenu()}},PZ.hint?'👁️':'🙈',h('small',{},'ipucu')));
+ const file=h('input',{type:'file',accept:'image/*',style:'display:none'});
+ file.addEventListener('change',()=>{const f=file.files&&file.files[0];if(f)loadPhoto(f)});
+ const cards=SCN.map(([k,l])=>h('button',{cls:'card',on:()=>{pop();puzzleStart(k)}},h('img',{src:url(SCENES[k]()),alt:l}),l));
+ if(CUSTOM)cards.unshift(h('button',{cls:'card',on:()=>{pop();puzzleStart('custom')}},h('img',{src:CUSTOM,alt:'Fotoğrafım',style:'object-fit:cover'}),'Fotoğrafım'));
+ cards.unshift(h('button',{cls:'card',style:'background:#fff4c2',on:()=>{pop();file.click()}},h('span',{},'📷'),CUSTOM?'Yeni resim':'Kendi resmim'));
+ pz.append(h('div',{cls:'menu',style:'flex:none;overflow-y:auto;max-height:100%;justify-content:flex-start'},h('h2',{},'Kaç parça olsun?'),lvl,h('h2',{},'Bir resim seç!'),h('div',{cls:'cards'},cards),file));
+ say('Kaç parça olsun? Sonra bir resim seç!')}
+function loadPhoto(f){const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const z=600,c=document.createElement('canvas');c.width=c.height=z;const m=Math.min(im.width,im.height);
+ c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,z,z);CUSTOM=c.toDataURL('image/jpeg',.85);try{localStorage.setItem('minik-foto',CUSTOM)}catch(e){}yay();puzzleStart('custom')};
+ im.onerror=()=>{oops();say('Bu resmi açamadım.')};im.src=rd.result};rd.readAsDataURL(f)}
+function puzzleStart(k){const pz=$('#pz');pz.innerHTML='';const n=PZ.n,img=k==='custom'?CUSTOM:url(SCENES[k]());
+ const land=innerWidth>innerHeight&&innerWidth>=640,H=innerHeight-64;
+ const W=Math.floor(Math.min(land?Math.min(H-40,innerWidth*.5):Math.min(innerWidth*.9,H*.52),460)/n)*n,s=W/n;
+ const area=land?(innerWidth-W-60)*(H-80):innerWidth*(H-W-110),ts=Math.max(30,Math.floor(Math.min(s*.85,Math.sqrt(area/(n*n))*.82)));
  PZ={...PZ,k,img,W,s,ts,placed:0};
- const board=h('div',{cls:'board',style:`width:${W}px;height:${W}px;grid-template-columns:repeat(${n},${s}px);grid-template-rows:repeat(${n},${s}px)`},h('div',{cls:'ghost',style:`background-image:url("${img}")`}));
+ const board=h('div',{cls:'board',style:`width:${W}px;height:${W}px;grid-template-columns:repeat(${n},${s}px);grid-template-rows:repeat(${n},${s}px)`},h('div',{cls:'ghost',style:`background-image:url("${img}");opacity:${PZ.hint?.25:0}`}));
  const slots=[];for(let i=0;i<n*n;i++){const sl=h('div',{cls:'slot'});board.append(sl);slots.push(sl)}PZ.slots=slots;
  const tray=h('div',{cls:'tray2'});
  shuffle([...Array(n*n).keys()]).forEach(i=>{const p=h('div',{cls:'piece'});p.dataset.i=i;stylePiece(p,i,ts);p.addEventListener('pointerdown',dragStart);tray.append(p)});
- pz.append(board,tray,h('button',{cls:'act',style:'flex:none;width:180px',on:()=>{pop();puzzleMenu()}},'↩️ Resimler'));
+ pz.append(board,h('div',{style:'display:flex;flex-direction:column;align-items:center;gap:8px;min-height:0;flex:1;justify-content:center'},tray,h('button',{cls:'act',style:'flex:none;width:180px',on:()=>{pop();puzzleMenu()}},'↩️ Resimler')));
  say('Parçaları sürükleyip doğru yere koy!')}
 function stylePiece(p,i,sz){const n=PZ.n,r=Math.floor(i/n),c=i%n;p.style.width=p.style.height=sz+'px';p.style.backgroundImage=`url("${PZ.img}")`;p.style.backgroundSize=`${sz*n}px ${sz*n}px`;p.style.backgroundPosition=`${-c*sz}px ${-r*sz}px`}
 function dragStart(ev){ev.preventDefault();const p=ev.currentTarget,i=+p.dataset.i,s=PZ.s;pop();
@@ -496,7 +538,7 @@ function dragStart(ev){ev.preventDefault();const p=ev.currentTarget,i=+p.dataset
    if(PZ.placed===PZ.n*PZ.n){PZ.slots.forEach(sl=>sl.style.border='none');setTimeout(()=>win('Yapbozu tamamladın!'),250);setTimeout(puzzleMenuBtn,600)}}
   else{p.style.visibility='visible';const b=document.querySelector('.board').getBoundingClientRect();if(e.clientX>b.left&&e.clientX<b.right&&e.clientY>b.top&&e.clientY<b.bottom){oops();p.classList.remove('shake');void p.offsetWidth;p.classList.add('shake')}}};
  addEventListener('pointermove',mv);addEventListener('pointerup',up);addEventListener('pointercancel',up)}
-function puzzleMenuBtn(){const t=document.querySelector('.tray2');if(t){t.innerHTML='';t.append(h('button',{cls:'act go',style:'width:220px;flex:none',on:()=>{pop();puzzleStart(PZ.k)}},'🔁 Tekrar'),h('button',{cls:'act pink',style:'width:220px;flex:none',on:()=>{pop();puzzleMenu()}},'🧩 Başka resim'))}}
+function puzzleMenuBtn(){const t=document.querySelector('.tray2');if(t){t.innerHTML='';t.style.flexDirection='column';t.style.alignItems='center';t.append(h('button',{cls:'act go',style:'width:220px;flex:none',on:()=>{pop();puzzleStart(PZ.k)}},'🔁 Tekrar'),h('button',{cls:'act pink',style:'width:220px;flex:none',on:()=>{pop();puzzleMenu()}},'🧩 Başka resim'))}}
 </script>
 </body>
 </html>
