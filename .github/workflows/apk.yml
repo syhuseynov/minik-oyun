@@ -1,0 +1,40 @@
+name: APK olustur
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: Paketleri kur
+        run: npm install
+      - name: Android projesi
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: APK derle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MinikOyunDunyam-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Indirme sayfasi (Release)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Minik Oyun Dünyam ${{ github.run_number }}
+          files: android/app/build/outputs/apk/debug/app-debug.apk
