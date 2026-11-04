@@ -1,6 +1,9 @@
 name: APK olustur
 on:
   push:
+    paths-ignore:
+      - 'glow/**'
+      - '.github/workflows/glow.yml'
   workflow_dispatch:
 permissions:
   contents: write
